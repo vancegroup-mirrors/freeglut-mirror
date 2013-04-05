@@ -19,11 +19,17 @@ set(VERSION_MINOR 0)
 set(VERSION_PATCH 0)
 
 
-# BUILD_SHARED_LIBS is already a standard CMake variable, but we need to
+# FREEGLUT_BUILD_SHARED_LIBS is already a standard CMake variable, but we need to
 # re-declare it here so it will show up in the GUI.
 # by default, we want to build both
-OPTION(BUILD_SHARED_LIBS "Build FreeGLUT shared library." ON)
-OPTION(BUILD_STATIC_LIBS "Build FreeGLUT static library." ON)
+OPTION(FREEGLUT_BUILD_SHARED_LIBS "Build FreeGLUT shared library." ON)
+OPTION(FREEGLUT_BUILD_STATIC_LIBS "Build FreeGLUT static library." ON)
+
+# option for whether warnings and errors should be printed
+OPTION(FREEGLUT_ERRORS "Lib prints errors to stderr" ON)
+#MARK_AS_ADVANCED(FREEGLUT_ERRORS)
+OPTION(FREEGLUT_WARNINGS "Lib prints warnings to stderr" ON)
+#MARK_AS_ADVANCED(FREEGLUT_WARNINGS)
 
 # option to also copy .pdb files to install directory when executing
 # INSTALL target
@@ -53,6 +59,7 @@ SET(FREEGLUT_SRCS
     src/fg_ext.c
     src/fg_font_data.c
     src/fg_gamemode.c
+    src/fg_geometry.c
     src/fg_gl2.c
     src/fg_gl2.h
     src/fg_init.c
@@ -61,7 +68,6 @@ SET(FREEGLUT_SRCS
     src/fg_input_devices.c
     src/fg_joystick.c
     src/fg_main.c
-    src/fg_main.h
     src/fg_misc.c
     src/fg_overlay.c
     src/fg_spaceball.c
@@ -69,6 +75,8 @@ SET(FREEGLUT_SRCS
     src/fg_stroke_mono_roman.c
     src/fg_stroke_roman.c
     src/fg_structure.c
+    src/fg_teapot.c
+    src/fg_teapot_data.h
     src/fg_videoresize.c
     src/fg_window.c
 )
@@ -77,13 +85,9 @@ IF(NOT FREEGLUT_GLES2 AND NOT FREEGLUT_GLES1)
     LIST(APPEND FREEGLUT_SRCS
         src/fg_font.c
         src/fg_menu.c
-        src/fg_teapot.c
-        src/fg_teapot_data.h
-        src/fg_geometry.c
     )
 ELSE()
     LIST(APPEND FREEGLUT_SRCS
-        src/fg_geometry.c
         src/gles_stubs.c
     )
 ENDIF()
@@ -287,33 +291,33 @@ ENDIF()
 # The generated config.h is placed in the project's build directory, just to
 # ensure that all CMake-generated files are kept away from the main source tree.
 # As a result, the build directory must to be added to the include path list.
-CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_BINARY_DIR}/config.h)
-INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_BINARY_DIR}/config.h)
+INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
 ADD_DEFINITIONS(-DHAVE_CONFIG_H)
 IF(WIN32)
     # we also have to generate freeglut.rc, which contains the version
     # number
-    CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/freeglut.rc.in ${CMAKE_BINARY_DIR}/freeglut.rc)
+    CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/freeglut.rc.in ${CMAKE_BINARY_DIR}/freeglut.rc)
     IF (MSVC AND NOT CMAKE_CL_64)
         # .def file only for 32bit Windows builds with Visual Studio
-        CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/src/freeglutdll.def.in ${CMAKE_BINARY_DIR}/freeglutdll.def)
+        CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/src/freeglutdll.def.in ${CMAKE_BINARY_DIR}/freeglutdll.def)
     ENDIF()
 ENDIF()
 
-IF(BUILD_SHARED_LIBS)
+IF(FREEGLUT_BUILD_SHARED_LIBS)
     ADD_LIBRARY(freeglut SHARED ${FREEGLUT_SRCS})
 ENDIF()
-IF(BUILD_STATIC_LIBS)
+IF(FREEGLUT_BUILD_STATIC_LIBS)
     ADD_LIBRARY(freeglut_static STATIC ${FREEGLUT_SRCS})
 ENDIF()
 
 
 IF(WIN32)
     LIST(APPEND LIBS winmm)
-    IF(BUILD_SHARED_LIBS)
+    IF(FREEGLUT_BUILD_SHARED_LIBS)
         SET_TARGET_PROPERTIES(freeglut PROPERTIES COMPILE_FLAGS -DFREEGLUT_EXPORTS)
     ENDIF()
-    IF(BUILD_STATIC_LIBS)
+    IF(FREEGLUT_BUILD_STATIC_LIBS)
         SET_TARGET_PROPERTIES(freeglut_static PROPERTIES COMPILE_FLAGS -DFREEGLUT_STATIC)
         # need to set machine:x64 for linker, at least for VC10, and
         # doesn't hurt for older compilers:
@@ -359,14 +363,14 @@ ELSE()
         SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -gstabs+")
     ENDIF()
 ENDIF()
-IF(BUILD_SHARED_LIBS)
+IF(FREEGLUT_BUILD_SHARED_LIBS)
     TARGET_LINK_LIBRARIES(freeglut ${LIBS})
 ENDIF()
-IF(BUILD_STATIC_LIBS)
+IF(FREEGLUT_BUILD_STATIC_LIBS)
     TARGET_LINK_LIBRARIES(freeglut_static ${LIBS})
 ENDIF()
 
-IF(BUILD_SHARED_LIBS)
+IF(FREEGLUT_BUILD_SHARED_LIBS)
     INSTALL(TARGETS freeglut
             RUNTIME DESTINATION bin
             LIBRARY DESTINATION lib
@@ -378,7 +382,7 @@ IF(BUILD_SHARED_LIBS)
 			CONFIGURATIONS Debug)
     ENDIF()
 ENDIF()
-IF(BUILD_STATIC_LIBS)
+IF(FREEGLUT_BUILD_STATIC_LIBS)
     INSTALL(TARGETS freeglut_static
             RUNTIME DESTINATION bin
             LIBRARY DESTINATION lib
@@ -405,14 +409,14 @@ ENDIF()
 
 MACRO(ADD_DEMO name)
     IF( FREEGLUT_BUILD_DEMOS )
-        IF(BUILD_SHARED_LIBS)
+        IF(FREEGLUT_BUILD_SHARED_LIBS)
             ADD_EXECUTABLE(${name} ${ARGN})
             TARGET_LINK_LIBRARIES(${name} ${DEMO_LIBS} freeglut)
             IF(WIN32 AND MSVC)
                 SET_TARGET_PROPERTIES(${name} PROPERTIES DEBUG_POSTFIX d)
             ENDIF()
         ENDIF()
-        IF(BUILD_STATIC_LIBS)
+        IF(FREEGLUT_BUILD_STATIC_LIBS)
             ADD_EXECUTABLE(${name}_static ${ARGN})
             TARGET_LINK_LIBRARIES(${name}_static ${DEMO_LIBS} freeglut_static)
             SET_TARGET_PROPERTIES(${name}_static PROPERTIES COMPILE_FLAGS -DFREEGLUT_STATIC)
@@ -427,7 +431,12 @@ ADD_DEMO(CallbackMaker   progs/demos/CallbackMaker/CallbackMaker.c)
 ADD_DEMO(Fractals        progs/demos/Fractals/fractals.c)
 ADD_DEMO(Fractals_random progs/demos/Fractals_random/fractals_random.c)
 ADD_DEMO(Lorenz          progs/demos/Lorenz/lorenz.c)
-ADD_DEMO(One             progs/demos/One/one.c)
+IF (NOT WIN32)
+    ADD_DEMO(One             progs/demos/One/one.c)
+ELSE()
+    ADD_DEMO(One             progs/demos/One/one.c
+                             progs/demos/One/one.rc)
+ENDIF()
 ADD_DEMO(Resizer         progs/demos/Resizer/Resizer.cpp)
 ADD_DEMO(multi-touch     progs/demos/multi-touch/multi-touch.c)
 ADD_DEMO(shapes          progs/demos/shapes/shapes.c
@@ -476,7 +485,7 @@ ELSEIF(FREEGLUT_GLES1)
   SET(PC_LIBNAME "freeglut-gles1")
   SET(PC_FILENAME "freeglut-gles1.pc")
 ENDIF()
-CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/freeglut.pc.in ${CMAKE_BINARY_DIR}/freeglut.pc @ONLY)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/freeglut.pc.in ${CMAKE_BINARY_DIR}/freeglut.pc @ONLY)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/freeglut.pc DESTINATION share/pkgconfig/ RENAME ${PC_FILENAME})
 # TODO: change the library and .pc name when building for GLES,
 # e.g. -lglut-GLES2

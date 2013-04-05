@@ -12,7 +12,7 @@ generateHeader($_SERVER['PHP_SELF']);
 <div style="font-size: 1.6em; font-weight: bold; text-align: center;">
 The Open-Source<br/>
 OpenGL Utility Toolkit<br/>
-(<i>freeglut</i> 2.0.0)<br/>
+(<i>freeglut</i> 3.0.0)<br/>
 Application Programming Interface
 </div>
 
@@ -24,7 +24,7 @@ Version 4.0
 <p></p>
 <div style="font-size: 1.2em; font-weight: bold; text-align: center;">
 The <i>freeglut</i> Programming Consortium<br/>
-July, 2003
+January, 2013
 </div>
 
 <p>
@@ -75,7 +75,7 @@ contained herein.
 			<li>glutCreateSubwindow</li>
 			<li>glutDestroyWindow</li>
 			<li>glutSetWindow, glutGetWindow</li>
-			<li>glutSetWindowTitle, glutSetIconTitlew</li>
+			<li>glutSetWindowTitle, glutSetIconTitle</li>
 			<li>glutReshapeWindow</li>
 			<li>glutPositionWindow</li>
 			<li>glutShowWindow, glutHideWindow, glutIconifyWindow</li>
@@ -133,13 +133,15 @@ contained herein.
 			<li>glutDisplayFunc</li>
 			<li>glutOverlayDisplayFunc</li>
 			<li>glutReshapeFunc</li>
+			<li>glutPositionFunc</li>
 			<li>glutCloseFunc</li>
 			<li>glutKeyboardFunc</li>
 			<li>glutSpecialFunc</li>
 			<li>glutKeyboardUpFunc</li>
 			<li>glutSpecialUpFunc</li>
 			<li>glutMotionFunc, glutPassiveMotionFunc</li>
-			<li>glutVisibilityFunc</li>
+            <li>glutMouseFunc</li>
+            <li>glutMouseWheelFunc</li>
 			<li>glutEntryFunc</li>
 			<li>glutJoystickFunc</li>
 			<li>glutSpaceballMotionFunc</li>
@@ -149,7 +151,7 @@ contained herein.
 			<li>glutDialsFunc</li>
 			<li>glutTabletMotionFunc</li>
 			<li>glutTabletButtonFunc</li>
-			<li>glutWindowStatusFunc</li>
+			<li>glutVisibilityFunc, glutWindowStatusFunc</li>
 		</ol>
 	</li>
 	<li><a href="#StateSetting">State Setting and Retrieval Functions</a>
@@ -229,7 +231,7 @@ contained herein.
 	</li>
 	<li><a href="#Miscellaneous">Miscellaneous Functions</a>
 		<ol>
-			<li>glutIgnoreKeyRepeat, glutSetKeyRepeat</li>
+			<li>glutSetKeyRepeat, glutIgnoreKeyRepeat</li>
 			<li>glutForceJoystickFunc</li>
 			<li>glutReportErrors</li>
 		</ol>
@@ -301,13 +303,18 @@ sizes in order to subtract them off the window's initial position until
 some time after the window has been created.  Therefore we decided on
 the following behavior, both under Windows and under UNIX/X11:
 <ul><li>When you create a window with position (x,y) and size (w,h), the
-upper left hand corner of the outside of the window is at (x,y) and the
-size of the drawable area is (w,h).
-<li>When you query the size and position of the window <i>freeglut</i>
-will return the size of the drawable area--the (w,h) that you specified
-when you created the window--and the coordinates of the upper left hand
-corner of the drawable area--which is <u>NOT</u> the (x,y) position of
-the window you specified when you created it.</ul>
+upper left hand corner of the outside of the window (the non-client
+area) is at (x,y) and the size of the drawable (client) area is (w,h).
+The coordinates taken by <tt>glutInitPosition</tt> and
+<tt>glutPositionWindow</tt>, as well as the coordinates provided by
+<i>FreeGLUT</i> when it calls the <tt>glutPositionFunc</tt> callback,
+specify the top-left of the non-client area of the window.</li>
+<li>When you query the size and position of the window using
+<tt>glutGet</tt>, <i>FreeGLUT</i> will return the size of the drawable
+area--the (w,h) that you specified when you created the window--and the
+coordinates of the upper left hand corner of the drawable (client)
+area--which is <u>NOT</u> the (x,y) position of the window you specified
+when you created it.</ul>
 </p>
 
 <h2>3.3 Terminology</h2>
@@ -584,6 +591,36 @@ Consortium and ask for the code to be fixed.
 <h2>6.4 glutSetWindow, glutGetWindow</h2>
 
 <h2>6.5 glutSetWindowTitle, glutSetIconTitle</h2>
+
+<p>
+The <tt>glutSetWindowTitle</tt>, <tt>glutSetIconTitle</tt> set the
+window title for when the window is in a visible state and when it is in
+an iconified state respectively.
+</p>
+
+<p><b>Usage</b></p>
+
+<p><tt>glutSetWindowTitle(const char* title);</tt><br>
+<tt>glutSetIconTitle(const char* title);</tt>
+</p>
+
+<p><b>Description</b></p>
+
+<p>
+Normally a window system displays a title for every top-level window in
+the system. The initial title is set when you call glutCreateWindow().
+By means of the <tt>glutSetWindowTitle</tt> function you can set the
+titles for your top-level <i>FreeGLUT</i> windows. If you just want one
+title for the window over the window's entire life, you should set it
+when you open the window with glutCreateWindow().<br>
+<tt>glutSetIconTitle</tt> set the title to be displayed for the window
+when it is in iconified (minimized) state.
+</p>
+
+<p><b>Changes From GLUT</b></p>
+
+<p><tt>glutSetIconTitle</tt> does nothing in GLUT on Windows, Windows is
+supported by <i>FreeGLUT</i>.</p>
 
 <h2>6.6 glutReshapeWindow</h2>
 
@@ -869,7 +906,34 @@ the idle callback. </p>
 
 <h2>12.3 glutReshapeFunc</h2>
 
-<h2>12.4 glutCloseFunc</h2>
+<h2>12.4 glutPositionFunc</h2>
+
+<p>
+The <tt>glutPositionFunc</tt> function sets the window's position
+callback. <i>Freeglut</i> calls the position callback when the window is
+repositioned/moved programatically or by the user.
+</p>
+
+<p><b>Usage</b></p>
+
+<p><tt>void glutPositionFunc ( void
+(* callback)( int x, int y) );</tt></p>
+
+<p><b>Description</b></p>
+
+<p>When <i>FreeGLUT</i> calls this callback, it provides the new
+position on the screen of the top-left of the <u>non-client area</u>,
+that is, the same coordinates used by <tt>glutInitPosition</tt> and
+<tt>glutPositionWindow</tt>. To get the position on the screen of the
+top-left of the client area, use <tt>glutGet(GLUT_WINDOW_X)</tt> and
+<tt>glutGet(GLUT_WINDOW_Y)</tt>. See <a href="#Conventions">FreeGLUT's
+conventions</a> for more information.</p>
+
+<p><b>Changes From GLUT</b></p>
+
+<p>This function is not implemented in GLUT.</p>
+
+<h2>12.5 glutCloseFunc</h2>
 
 <p>
 The <tt>glutCloseFunc</tt> function sets the window's close
@@ -881,7 +945,7 @@ about to be destroyed.
 
 <p><tt>void glutCloseFunc ( void (*func) ( void ) );</tt> </p>
 
-<p><tt>func </tt>The window's new closure callback function <br/>
+<p><tt>func</tt> The window's new closure callback function <br/>
 </p>
 
 <p><b>Description</b></p>
@@ -898,24 +962,20 @@ later time point.<br />
 <i>Freeglut</i> sets the <i>current window</i> to the window
 which is about to be closed when the callback is invoked. The window can
 thus be retrieved in the callback using <tt>glutGetWindow</tt>.<br />
-Please note that other further developments of <i>GLUT</i> provide a
-<tt>glutWMCloseFunc</tt>. For compatibility, <i>FreeGLUT</i> also
-provides this function. It is however an alias to
-<tt>glutCloseFunc</tt>. Users looking to prevent <i>FreeGLUT</i> from
-exiting when a window is closed, as was made possible with
-<tt>glutWMCloseFunc</tt> by that callback's designer should look into
-using glutSetOption to set <tt>GLUT_ACTION_ON_WINDOW_CLOSE</tt> to
-<tt>GLUT_ACTION_GLUTMAINLOOP_RETURNS</tt> or
-<tt>GLUT_ACTION_CONTINUE_EXECUTION</tt>. This will prevent the
-application from exiting when a window is closed.
+Users looking to prevent <i>FreeGLUT</i> from exiting when a window is
+closed, should look into using glutSetOption to set
+<tt>GLUT_ACTION_ON_WINDOW_CLOSE</tt>. Some settings will prevent the
+application from exiting when a window is closed.<br />
+Please note that <tt>glutWMCloseFunc</tt>, a deprecated function, is an
+alias to <tt>glutCloseFunc</tt>.
 
 <p><b>Changes From GLUT</b></p>
 
 <p>This function is not implemented in GLUT.</p>
 
-<h2>12.5 glutKeyboardFunc</h2>
+<h2>12.6 glutKeyboardFunc</h2>
 
-<h2>12.6 glutSpecialFunc</h2>
+<h2>12.7 glutSpecialFunc</h2>
 
 <p>
 The <tt>glutSpecialFunc</tt> function sets the window's special key press
@@ -970,7 +1030,7 @@ The <tt>key</tt> argument may take one of the following defined constant values:
 
 <p>None.</p>
 
-<h2>12.7 glutKeyboardUpFunc</h2>
+<h2>12.8 glutKeyboardUpFunc</h2>
 
 <p>
 The <tt>glutKeyboardUpFunc</tt> function sets the window's key release
@@ -1002,28 +1062,27 @@ function specifies the function that <i>freeglut</i> will call when the
 user releases a key from the keyboard.  The callback function has one
 argument:  the name of the function to be invoked ("called back") at
 the time at which the key is released.  The function returns no value.
-<i>Freeglut</i> sets the <i>current window</i>
-  to the window which is active when the callback is invoked. <br/>
-  While <i>freeglut</i> checks for upper or lower case
-letters, it does not do so for non-alphabetical characters.  Nor does
-it account for the Caps-Lock key being on.  The operating system may
-send some unexpected characters to <i>freeglut</i>, such as "8" when the
-user is pressing the Shift key.  <i>Freeglut</i> also invokes the callback
-when the user releases the Control, Alt, or Shift keys, among others.
-Releasing the Delete key causes this function to be invoked with a value
-of 127 for <tt>key</tt>. <br/>
-Calling <tt>glutKeyboardUpFunc</tt> with a NULL argument
-disables the call to the window's key release callback. </p>
+<i>Freeglut</i> sets the <i>current window</i> to the window which is
+active when the callback is invoked. <br/> While <i>freeglut</i> checks
+for upper or lower case letters, it does not do so for non-alphabetical
+characters.  Nor does it account for the Caps-Lock key being on.
+The operating system may send some unexpected characters to
+<i>freeglut</i>, such as "8" when the user is pressing the Shift
+key.  <i>Freeglut</i> also invokes the callback when the user
+releases the Control, Alt, or Shift keys, among others.  Releasing
+the Delete key causes this function to be invoked with a value of
+127 for <tt>key</tt>. <br/> Calling <tt>glutKeyboardUpFunc</tt> with
+a NULL argument disables the call to the window's key release callback.
+</p>
 
 <p><b>Changes From GLUT</b></p>
 
 <p>This function is not implemented in GLUT
 versions before Version 4.  It has been designed to be as close to GLUT
 as possible.  Users who find differences should contact the
-                          <i>freeglut</i>Programming Consortium  to
-have them fixed. </p>
+<i>freeglut</i> Programming Consortium to have them fixed. </p>
 
-<h2>12.8 glutSpecialUpFunc</h2>
+<h2>12.9 glutSpecialUpFunc</h2>
 
 <p>
 The <tt>glutSpecialUpFunc</tt> function sets the window's special key
@@ -1082,17 +1141,42 @@ as possible.  Users who find differences should contact the
 have them fixed.
 </p>
 
-<h2>12.9 glutMouseFunc</h2>
-
 <h2>12.10 glutMotionFunc, glutPassiveMotionFunc</h2>
 
-<h2>12.11 glutVisibilityFunc</h2>
+<h2>12.11 glutMouseFunc</h2>
 
-<h2>12.12 glutEntryFunc</h2>
+<h2>12.12 glutMouseWheelFunc</h2>
 
-<h2>12.13 glutJoystickFunc</h2>
+<p>
+The <tt>glutMouseWheelFunc</tt> function sets the window's mouse wheel
+callback. <i>Freeglut</i> calls the mouse wheel callback when the user
+spins the mouse wheel.
+</p>
 
-<h2>12.14 glutSpaceballMotionFunc</h2>
+<p><b>Usage</b></p>
+
+<p><tt>void glutMouseWheelFunc ( void( *callback )( int wheel, int
+direction, int x, int y ));</tt></p>
+
+<p><b>Description</b></p>
+
+<p>If the mouse wheel is spun over your (sub)window, <i>FreeGLUT</i>
+will report this via the MouseWheel callback. <tt>wheel</tt> is the wheel
+number, <tt>direction</tt> is +/- 1, and <tt>x</tt> and <tt>y</tt> are
+the mouse coordinates.<br><br>
+If you do not register a wheel callback, wheel events will be reported
+as mouse buttons.
+</p>
+
+<p><b>Changes From GLUT</b></p>
+
+<p>This function is not implemented in GLUT.</p>
+
+<h2>12.13 glutEntryFunc</h2>
+
+<h2>12.14 glutJoystickFunc</h2>
+
+<h2>12.15 glutSpaceballMotionFunc</h2>
 
 <p>
 The <tt>glutSpaceballMotionFunc</tt> function is implemented in
@@ -1110,7 +1194,7 @@ provided so that GLUT-based programs can compile and link against
 
 <p>TODO</p>
 
-<h2>12.15 glutSpaceballRotateFunc</h2>
+<h2>12.16 glutSpaceballRotateFunc</h2>
 
 <p>
 The <tt>glutSpaceballRotateFunc</tt> function is implemented in
@@ -1128,7 +1212,7 @@ provided so that GLUT-based programs can compile and link against
 
 <p>TODO</p>
 
-<h2>12.16 glutSpaceballButtonFunc</h2>
+<h2>12.17 glutSpaceballButtonFunc</h2>
 
 <p>
 The <tt>glutSpaceballButtonFunc</tt> function is implemented in
@@ -1146,7 +1230,7 @@ provided so that GLUT-based programs can compile and link against
 
 <p>TODO</p>
 
-<h2>12.17 glutButtonBoxFunc</h2>
+<h2>12.18 glutButtonBoxFunc</h2>
 
 <p>
 The <tt>glutDialsFunc</tt> function sets the global dials&buttons box callback. Freeglut calls the callback when there is input from the box buttons.
@@ -1171,7 +1255,7 @@ href="http://www.reputable.com/sgipix/sgi-dialnbutton1.jpg">http://www.reputable
 for instance.
 </p>
 
-<h2>12.18 glutDialsFunc</h2>
+<h2>12.19 glutDialsFunc</h2>
 
 <p>
 The <tt>glutDialsFunc</tt> function sets the global dials&buttons box callback. Freeglut calls the callback when there is input from the box dials.
@@ -1195,7 +1279,7 @@ href="http://www.reputable.com/sgipix/sgi-dialnbutton1.jpg">http://www.reputable
 for instance.
 </p>
 
-<h2>12.19 glutTabletMotionFunc</h2>
+<h2>12.20 glutTabletMotionFunc</h2>
 
 <p>
 The <tt>glutTabletMotionFunc</tt> function is not implemented in <i>
@@ -1218,7 +1302,7 @@ is not implemented in <i>freeglut</i>. </p>
 
 <p>GLUT implements this function. </p>
 
-<h2>12.20 glutTabletButtonFunc</h2>
+<h2>12.21 glutTabletButtonFunc</h2>
 
 <p>
 The <tt>glutTabletButtonFunc</tt> function is not implemented in <i>
@@ -1242,11 +1326,120 @@ is not implemented in <i>freeglut</i>.
 
 <p>GLUT implements this function. </p>
 
-<h2>12.21 glutWindowStatusFunc</h2>
+<h2>12.22 glutVisibilityFunc, glutWindowStatusFunc</h2>
+
+<p>
+The <tt>glutVisibilityFunc</tt> and the <tt>glutWindowStatusFunc</tt>
+functions set the window's visibility and windowStatus callbacks for the
+current window. Setting one supersedes the other. <i>Freeglut</i> calls
+these callbacks when the visibility status of a window changes.
+</p>
+
+<p><b>Usage</b></p>
+
+<p><tt>void glutVisibilityFunc ( void( *callback )( int state ));</tt>
+<br><tt>void glutWindowStatusFunc ( void( *callback )( int state ));</tt>
+</p>
+
+<p><b>Description</b></p>
+
+<p>
+The state callback parameter is one of GLUT_HIDDEN, GLUT_FULLY_RETAINED,
+GLUT_PARTIALLY_RETAINED, or GLUT_FULLY_COVERED depending on the current
+window status of the window. GLUT_HIDDEN means that the window is not
+shown (often meaning that the window is iconified). GLUT_FULLY_RETAINED
+means that the window is fully retained (no pixels belonging to the
+window are covered by other windows). GLUT_PARTIALLY_RETAINED means that
+the window is partially retained (some but not all pixels belonging to
+the window are covered by other windows). GLUT_FULLY_COVERED means the
+window is shown but no part of the window is visible, i.e., until the
+window's status changes, all further rendering to the window is
+discarded.<br>
+GLUT considers a window visible if any pixel of the window is visible or
+any pixel of any descendant window is visible on the screen.<br>
+GLUT applications are encouraged to disable rendering and/or animation
+when windows have a status of either GLUT_HIDDEN or
+GLUT_FULLY_COVERED.<br>
+If the window status callback for a window is disabled and later
+re-enabled, the window status of the window is undefined; any change in
+window window status will be reported, that is if you disable a window
+status callback and re-enable the callback, you are guaranteed the next
+window status change will be reported.<br>
+Setting the window status callback for a window disables the visibility
+callback set for the window (and vice versa). The visibility callback is
+set with <tt>glutVisibilityFunc</tt>. <tt>glutVisibilityFunc</tt> is
+deprecated in favor of the more informative
+<tt>glutWindowStatusFunc</tt>. For <tt>glutVisibilityFunc</tt>, the
+state callback parameter is either GLUT_NOT_VISIBLE or GLUT_VISIBLE
+depending on the current visibility of the window. GLUT_VISIBLE does not
+distinguish a window being totally versus partially visible.
+GLUT_NOT_VISIBLE means no part of the window is visible, i.e., until the
+window's visibility changes, all further rendering to the window is
+discarded.<br>
+Not all window managers support such finegrained callback messages or
+can even ensure basic correctness. On Windows, there are no
+notifications if the visibility status of a window changes and
+<i>FreeGLUT</i> might be in visible state even if the window is fully
+obscured by other windows.
+</p>
+
+<p><b>Changes From GLUT</b></p>
+
+<p>None.</p>
 
 <h1>13. <a name="StateSetting"></a>State Setting and Retrieval Functions</h1>
 
 <h2>13.1 glutSetOption</h2>
+
+<p>
+Allows you to set some general state/option variables.
+</p>
+
+<p><b>Usage</b></p>
+
+<p>
+<tt>void glutSetOption ( GLenum eWhat, int value );</tt>
+</p>
+
+<p><b>Description</b></p>
+
+<p>Stores the <tt>value</tt> into a state variable named by
+<tt>eWhat</tt>.</p>
+<p>
+The following state variables can be set:
+<ul>
+<li>GLUT_ACTION_ON_WINDOW_CLOSE - Controls what happens when a window is
+closed by the user or system. GLUT_ACTION_EXIT will immediately exit the
+application (default, GLUT's behavior). GLUT_ACTION_GLUTMAINLOOP_RETURNS
+will immediately return from the main loop.
+GLUT_ACTION_CONTINUE_EXECUTION will contine execution of remaining
+windows.</li>
+<li>GLUT_INIT_DISPLAY_MODE - Set the display mode for a new window, see
+<tt>glutInitDisplayMode</tt></li>
+<li>GLUT_INIT_WINDOW_X - Set the initial horizontal position of new
+windows.</li>
+<li>GLUT_INIT_WINDOW_Y - Set the initial vertical position of new
+windows.</li>
+<li>GLUT_INIT_WINDOW_WIDTH - Set the width of new windows.</li>
+<li>GLUT_INIT_WINDOW_HEIGHT - Set the height of new windows.</li>
+<li>GLUT_RENDERING_CONTEXT - Set to either GLUT_CREATE_NEW_CONTEXT or
+GLUT_USE_CURRENT_CONTEXT to indicate whether to share the current OpenGL
+rendering context with new windows.</li>
+<li>GLUT_WINDOW_CURSOR - Set the current window's cursor as if by
+glutSetCursor().</li>
+<li>GLUT_AUX - Set the number of auxiliary buffers requested for new
+windows if GLUT_AUX was set in the displayMode.</li>
+<li>GLUT_MULTISAMPLE - Set the number of samples to request for new
+windows if GLUT_MULTISAMPLE was set in the displayMode.</li>
+<li>GLUT_GEOMETRY_VISUALIZE_NORMALS - Set whether <a
+href="#GeometricObject"><i>FreeGLUT</i>'s geometric object rendering
+functions</a> also visualize the object's normals or not.</li>
+</ul>
+</p>
+
+<p><b>Changes From GLUT</b></p>
+
+<p>This function is not implemented in GLUT.</p>
 
 <h2>13.2 glutGet</h2>
 
@@ -1272,7 +1465,7 @@ These queries are with respect to the current window:
 <li>GLUT_WINDOW_HEIGHT - window height, see <a href="#Conventions">FreeGLUT's conventions</a></li>
 <li>GLUT_WINDOW_BORDER_WIDTH - window border width</li>
 <li>GLUT_WINDOW_BORDER_HEIGHT - window border height</li>
-<li>GLUT_WINDOW_BUFFER_SIZE - number of color or color index bits per pixel</li>
+<li>GLUT_WINDOW_BUFFER_SIZE - number of color (including alpha) or color index bits per pixel</li>
 <li>GLUT_WINDOW_STENCIL_SIZE - number of bits per stencil value</li>
 <li>GLUT_WINDOW_DEPTH_SIZE - number of bits per depth value</li>
 <li>GLUT_WINDOW_RED_SIZE - number of bits per red value</li>
@@ -1310,7 +1503,8 @@ These queries do not depend on the current window.
 <li>GLUT_INIT_WINDOW_Y - Y position last set by glutInitWindowPosition</li>
 <li>GLUT_INIT_WINDOW_WIDTH - width last set by glutInitWindowSize</li>
 <li>GLUT_INIT_WINDOW_HEIGHT - height last set by glutInitWindowSize</li>
-<li>GLUT_INIT_DISPLAY_MODE - display mode last set by glutInitDisplayMode</li>
+<li>GLUT_INIT_DISPLAY_MODE - display mode last set by
+glutInitDisplayMode or glutSetOption(GLUT_INIT_DISPLAY_MODE, value)</li>
 <li>GLUT_ELAPSED_TIME - time (in milliseconds) elapsed since glutInit or glutGet(GLUT_ELAPSED_TIME) was first called</li>
 <li>GLUT_INIT_STATE - 1 if <i>freeglut</i> has been initialized through
     a call to <tt>glutInit</tt></li>
@@ -1751,18 +1945,21 @@ are designed such that all characters have (nominally) the same height. </p>
 <h1>15. <a name="GeometricObject"></a>Geometric Object Rendering Functions</h1>
 
 <p>
-<i>Freeglut</i> includes eighteen routines for generating easily-recognizable
- 3-d geometric objects.  These routines are effectively the same ones
- that are included in the GLUT library, and reflect the functionality available
- in the <i>aux</i> toolkit described in the <i>OpenGL Programmer's Guide</i>
-  . They are included to allow programmers to create with a single
-line of code a three-dimensional object which can be used to test a variety
-of OpenGL functionality.  None of the routines generates a display list
-for the object which it draws.  The functions generate normals appropriate
-for lighting but, except for the teapon functions, do not generate texture
-coordinates. Do note that depth testing (GL_LESS) should be enabled for
-the correct drawing of the nonconvex objects, i.e., the glutTorus,
-glutSierpinskiSponge and glutTeapot.
+<i>Freeglut</i> includes eighteen routines for generating
+easily-recognizable 3-d geometric objects.  These routines are
+effectively the same ones that are included in the GLUT library, and
+reflect the functionality available in the <i>aux</i> toolkit described
+in the <i>OpenGL Programmer's Guide</i>. They are included to allow
+programmers to create with a single line of code a three-dimensional
+object which can be used to test a variety of OpenGL functionality.
+None of the routines generates a display list for the object which it
+draws.  The functions generate normals appropriate for lighting but,
+except for the teapot functions, do not generate texture coordinates. Do
+note that depth testing (GL_LESS) should be enabled for the correct
+drawing of the nonconvex objects, i.e., the glutTorus,
+glutSierpinskiSponge and glutTeapot.<br>
+Also see the <tt>GLUT_GEOMETRY_VISUALIZE_NORMALS</tt> option that can be
+set with <tt>glutSetOption</tt>.
 </p>
 
 <h2>15.1  glutWireSphere, glutSolidSphere</h2>
@@ -2265,7 +2462,45 @@ the <a href="android.php">Android page</a>.</p>
 
 <h1>19. <a name="Miscellaneous"></a>Miscellaneous Functions</h1>
 
-<h2>19.1 glutIgnoreKeyRepeat, glutSetKeyRepeat</h2>
+<h2>19.1 glutSetKeyRepeat, glutIgnoreKeyRepeat</h2>
+
+<p>
+The <tt>glutSetKeyRepeat</tt> and <tt>glutIgnoreKeyRepeat</tt> functions
+set whether repeated key presses (generated by keeping a key depressed)
+are passed on to the keyboard callbacks. <tt>glutSetKeyRepeat</tt>
+allows to globally switch off key repeat, while
+<tt>glutIgnoreKeyRepeat</tt> offers control over this behavior on a
+per-window basis.
+</p>
+
+<p><b>Definition</b></p>
+
+<p><tt>
+void glutSetKeyRepeat&nbsp;&nbsp;&nbsp;(int repeatMode);<br>
+void glutIgnoreKeyRepeat(int ignore);</tt></p>
+
+<p><b>Arguments</b></p>
+<p><tt>glutSetKeyRepeat's repeatMode&nbsp;&nbsp;</tt> 
+GLUT_KEY_REPEAT_OFF to globally switch key repeat off, or
+GLUT_KEY_REPEAT_ON and GLUT_KEY_REPEAT_DEFAULT to globally switch key
+repeat on.<br>
+<tt>glutIgnoreKeyRepeat's ignore&nbsp;&nbsp;&nbsp;</tt> if non-zero, key
+repeat is switched off for the current window.</p>
+
+<p><b>Notes</b></p>
+
+<p>If key repeat is globally switched off through
+<tt>glutSetKeyRepeat</tt>, it cannot be reenabled on a per-window basis
+with <tt>glutIgnoreKeyRepeat</tt>. If you want per-window control of key
+repeat, set <tt>glutSetKeyRepeat</tt> to <tt>GLUT_KEY_REPEAT_ON</tt> and
+use <tt>glutIgnoreKeyRepeat(GL_TRUE)</tt> to switch off key repeat for
+the windows for which you don't want it.</p>
+
+<p><b>Changes From GLUT</b></p>
+
+<p>Nate Robbins' port of GLUT to win32 did not implement
+<tt>glutSetKeyRepeat</tt>, but <i>FreeGLUT</i>'s behavior should conform on all
+platforms to GLUT's behavior on X11.</p>
 
 <h2>19.2 glutForceJoystickFunc</h2>
 
@@ -2284,9 +2519,17 @@ are recognized by <i>freeglut</i>:
 	if FREEGLUT_FPS is set to 5000, every 5 seconds a message will be printed
 	to stderr showing the current frame rate.  The frame rate is measured by counting
 	the number of times glutSwapBuffers() is called over the time interval.</li>
-  <li>GLUT_ICON - specifies the icon that
-	goes in the upper left-hand corner of the <i>freeglut</i><i> </i>windows </li>
 </ul>
+
+<p>
+Furthermore, on windows, there is a resource file identifier GLUT_ICON
+that you can specify for your executable file. It specifies the icon
+that goes in the upper left-hand corner of the <i>freeglut</i> windows.
+Your application's resource file should contain the line:<br>
+<tt>GLUT_ICON   ICON    DISCARDABLE     "icon.ico"</tt><br>, where
+icon.ico is the filename of your icon. The One demo includes such an
+icon as an example.
+</p>
 
 <h1>21. <a name="ImplementationNotes"></a>Implementation Notes</h1>
 
@@ -2313,7 +2556,7 @@ Programs which use the <i>freeglut</i>-specific extensions to GLUT should includ
 It was initially planned to
 define <code>FREEGLUT_VERSION_2_0</code>, <code>FREEGLUT_VERSION_2_1</code>, <code>FREEGLUT_VERSION_2_2</code>,
 etc., but this was only done for <code>FREEGLUT_VERSION_2_0</code>.
-This constant still exist in recent FreeGLUT releases but is
+This constant still exist in current FreeGLUT releases but is
 deprecated.
 </p>
 

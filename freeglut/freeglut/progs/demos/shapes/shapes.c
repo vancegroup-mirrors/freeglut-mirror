@@ -93,11 +93,6 @@ typedef char ourGLchar;
 #define APIENTRY
 #endif
 
-#ifndef GL_VERSION_1_5
-typedef void (APIENTRY *PFNGLGENBUFFERSPROC) (GLsizei n, GLuint *buffers);
-typedef void (APIENTRY *PFNGLBINDBUFFERPROC) (GLenum target, GLuint buffer);
-typedef void (APIENTRY *PFNGLBUFFERDATAPROC) (GLenum target, ourGLsizeiptr size, const GLvoid *data, GLenum usage);
-#endif
 #ifndef GL_VERSION_2_0
 typedef GLuint (APIENTRY *PFNGLCREATESHADERPROC) (GLenum type);
 typedef void (APIENTRY *PFNGLSHADERSOURCEPROC) (GLuint shader, GLsizei count, const ourGLchar **string, const GLint *length);
@@ -149,6 +144,11 @@ void initExtensionEntries(void)
     gl_GetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC) glutGetProcAddress ("glGetUniformLocation");
     gl_UniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC) glutGetProcAddress ("glUniformMatrix4fv");
     gl_UniformMatrix3fv = (PFNGLUNIFORMMATRIX3FVPROC) glutGetProcAddress ("glUniformMatrix3fv");
+    if (!gl_CreateShader || !gl_ShaderSource || !gl_CompileShader || !gl_CreateProgram || !gl_AttachShader || !gl_LinkProgram || !gl_UseProgram || !gl_GetShaderiv || !gl_GetShaderInfoLog || !gl_GetProgramiv || !gl_GetProgramInfoLog || !gl_GetAttribLocation || !gl_GetUniformLocation || !gl_UniformMatrix4fv || !gl_UniformMatrix3fv)
+    {
+        fprintf (stderr, "glCreateShader, glShaderSource, glCompileShader, glCreateProgram, glAttachShader, glLinkProgram, glUseProgram, glGetShaderiv, glGetShaderInfoLog, glGetProgramiv, glGetProgramInfoLog, glGetAttribLocation, glGetUniformLocation, glUniformMatrix4fv or gl_UniformMatrix3fv not found");
+        exit(1);
+    }
 }
 
 const ourGLchar *vertexShaderSource[] = {
@@ -462,24 +462,22 @@ static void drawSolidCone(void)                { glutSolidCone(irad,orad,slices,
 static void drawWireCone(void)                 { glutWireCone(irad,orad,slices,stacks);          }  /* irad doubles as base input, and orad as height input */
 static void drawSolidCylinder(void)            { glutSolidCylinder(irad,orad,slices,stacks);     }  /* irad doubles as radius input, and orad as height input */
 static void drawWireCylinder(void)             { glutWireCylinder(irad,orad,slices,stacks);      }  /* irad doubles as radius input, and orad as height input */
+/* per Glut manpage, it should be noted that the teapot is rendered
+ * with clockwise winding for front facing polygons...
+ * Same for the teacup and teaspoon
+ */
 static void drawSolidTeapot(void)
-{
-    /* per Glut manpage, it should be noted that the teapot is rendered
-     * with clockwise winding for front facing polygons...
-     */
-    glFrontFace(GL_CW);
-    glutSolidTeapot(orad);  /* orad doubles as size input */
-    glFrontFace(GL_CCW);
-}
+{   glFrontFace(GL_CW);    glutSolidTeapot(orad);   glFrontFace(GL_CCW);    /* orad doubles as size input */}
 static void drawWireTeapot(void)
-{
-    /* per Glut manpage, it should be noted that the teapot is rendered
-     * with clockwise winding for front facing polygons...
-     */
-    glFrontFace(GL_CW);
-    glutWireTeapot(orad);  /* orad doubles as size input */
-    glFrontFace(GL_CCW);
-}
+{   glFrontFace(GL_CW);    glutWireTeapot(orad);    glFrontFace(GL_CCW);    /* orad doubles as size input */}
+static void drawSolidTeacup(void)
+{   glFrontFace(GL_CW);    glutSolidTeacup(orad);   glFrontFace(GL_CCW);    /* orad doubles as size input */}
+static void drawWireTeacup(void)
+{   glFrontFace(GL_CW);    glutWireTeacup(orad);    glFrontFace(GL_CCW);    /* orad doubles as size input */}
+static void drawSolidTeaspoon(void)
+{   glFrontFace(GL_CW);    glutSolidTeaspoon(orad); glFrontFace(GL_CCW);    /* orad doubles as size input */}
+static void drawWireTeaspoon(void)
+{   glFrontFace(GL_CW);    glutWireTeaspoon(orad);  glFrontFace(GL_CCW);    /* orad doubles as size input */}
 
 #define RADIUSFAC    0.70710678118654752440084436210485f
 
@@ -554,6 +552,8 @@ static const entry table [] =
     ENTRY (Icosahedron,GEO_NO_SIZE),
     ENTRY (SierpinskiSponge,GEO_SCALE),
     ENTRY (Teapot,GEO_SIZE),
+    ENTRY (Teacup,GEO_SIZE),
+    ENTRY (Teaspoon,GEO_SIZE),
     ENTRY (Torus,GEO_INNER_OUTER_RAD),
     ENTRY (Sphere,GEO_RAD),
     ENTRY (Cone,GEO_BASE_HEIGHT),
@@ -690,6 +690,7 @@ static void display(void)
         gl_UseProgram (program);
         glutSetVertexAttribCoord3(attribute_fg_coord);
         glutSetVertexAttribNormal(attribute_fg_normal);
+        /* There is also a glutSetVertexAttribTexCoord2, which is used only when drawing the teapot, teacup or teaspoon */
 
         gl_matrix_mode(GL_PROJECTION);
         gl_load_identity();
@@ -851,10 +852,12 @@ static void special (int key, int x, int y)
 
     /* Cuboctahedron can't be shown when in shader mode, skip it */
     if (useShader && NUMBEROF (table)-1 == ( unsigned )function_index)
+    {
         if (key==GLUT_KEY_PAGE_UP)
             function_index = 0;
         else
             function_index -= 1;
+    }
 }
 
 
